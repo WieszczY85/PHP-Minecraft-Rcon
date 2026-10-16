@@ -117,16 +117,20 @@ class Rcon
         // send command packet
         $this->writePacket(self::PACKET_COMMAND, self::SERVERDATA_EXECCOMMAND, $command);
 
+		// send additional packet to determine last response packet later
+        $this->writePacket(self::PACKET_COMMAND_ENDING, self::SERVERDATA_EXECCOMMAND, 'ping');
+
         // get response
+		$response = '';
         $response_packet = $this->readPacket();
-        if ($response_packet['id'] == self::PACKET_COMMAND) {
-            if ($response_packet['type'] == self::SERVERDATA_RESPONSE_VALUE) {
-                $this->lastResponse = $response_packet['body'];
-
-                return $response_packet['body'];
-            }
+        while ($response_packet['id'] == self::PACKET_COMMAND && $response_packet['type'] == self::SERVERDATA_RESPONSE_VALUE) {
+            $response .= $response_packet['body'];
+            $response_packet = $this->readPacket();
         }
-
+        $response = substr($response, 0, -3);
+        if ($response != '') {
+            $this->lastResponse = $response_packet['body'];
+            return $response;
         return false;
     }
 
